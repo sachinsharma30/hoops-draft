@@ -60,7 +60,15 @@ export interface SeriesResult {
   teamBWins: number;
 }
 
-export interface BracketResult {
-  rounds: SeriesResult[][];
-  champion: FantasyTeam;
+export interface Matchup {
+  teamA: FantasyTeam | null;
+  teamB: FantasyTeam | null;
+  result: SeriesResult | null;
+  winner: FantasyTeam | null;
+  isBye: boolean;
+}
+
+export interface BracketState {
+  rounds: Matchup[][];
+  champion: FantasyTeam | null;
 }

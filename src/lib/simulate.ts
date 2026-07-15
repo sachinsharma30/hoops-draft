@@ -1,5 +1,5 @@
 import { teamRating } from './rating';
-import type { BracketResult, FantasyTeam, SeriesGameResult, SeriesResult } from './types';
+import type { BracketState, FantasyTeam, Matchup, SeriesGameResult, SeriesResult } from './types';
 
 function gaussianRandom(mean: number, std: number): number {
   let u = 0;
@@ -74,38 +74,112 @@ function seedOrder(size: number): number[] {
   return order;
 }
 
-export function simulateBracket(teamsInput: FantasyTeam[]): BracketResult {
+function emptyMatchup(): Matchup {
+  return { teamA: null, teamB: null, result: null, winner: null, isBye: false };
+}
+
+function advanceWinner(state: BracketState, roundIdx: number, matchIdx: number, winner: FantasyTeam) {
+  if (roundIdx + 1 < state.rounds.length) {
+    const nextMatch = state.rounds[roundIdx + 1][Math.floor(matchIdx / 2)];
+    if (matchIdx % 2 === 0) nextMatch.teamA = winner;
+    else nextMatch.teamB = winner;
+  } else {
+    state.champion = winner;
+  }
+}
+
+function resolveByes(state: BracketState) {
+  state.rounds[0].forEach((m, i) => {
+    if (m.teamA && !m.teamB) {
+      m.winner = m.teamA;
+      m.isBye = true;
+      advanceWinner(state, 0, i, m.teamA);
+    } else if (m.teamB && !m.teamA) {
+      m.winner = m.teamB;
+      m.isBye = true;
+      advanceWinner(state, 0, i, m.teamB);
+    }
+  });
+}
+
+/** Builds the full bracket skeleton (seeded first round, empty placeholders after) and auto-resolves byes. */
+export function createBracket(teamsInput: FantasyTeam[]): BracketState {
   const seeded = [...teamsInput].sort((a, b) => teamRating(b).overall - teamRating(a).overall);
   const bracketSize = 2 ** Math.ceil(Math.log2(seeded.length));
   const order = seedOrder(bracketSize);
   const slots: (FantasyTeam | null)[] = order.map((seed) => seeded[seed - 1] ?? null);
 
-  const rounds: SeriesResult[][] = [];
-  let current = slots;
-  let roundNum = 1;
-
-  while (current.length > 1) {
-    const next: (FantasyTeam | null)[] = [];
-    const roundResults: SeriesResult[] = [];
-
-    for (let i = 0; i < current.length; i += 2) {
-      const a = current[i];
-      const b = current[i + 1];
-
-      if (a && b) {
-        const result = simulateSeries(a, b, roundNum);
-        roundResults.push(result);
-        next.push(result.winner);
-      } else {
-        // bye
-        next.push(a ?? b);
-      }
-    }
-
-    if (roundResults.length > 0) rounds.push(roundResults);
-    current = next;
-    roundNum++;
+  const rounds: Matchup[][] = [];
+  let roundSize = bracketSize;
+  while (roundSize >= 2) {
+    rounds.push(Array.from({ length: roundSize / 2 }, emptyMatchup));
+    roundSize /= 2;
   }
 
-  return { rounds, champion: current[0]! };
+  for (let i = 0; i < rounds[0].length; i++) {
+    rounds[0][i].teamA = slots[i * 2];
+    rounds[0][i].teamB = slots[i * 2 + 1];
+  }
+
+  const state: BracketState = { rounds, champion: null };
+  resolveByes(state);
+  return state;
+}
+
+function cloneBracket(state: BracketState): BracketState {
+  return {
+    champion: state.champion,
+    rounds: state.rounds.map((round) => round.map((m) => ({ ...m }))),
+  };
+}
+
+function findNextPlayable(state: BracketState): { roundIdx: number; matchIdx: number } | null {
+  for (let r = 0; r < state.rounds.length; r++) {
+    for (let m = 0; m < state.rounds[r].length; m++) {
+      const match = state.rounds[r][m];
+      if (match.teamA && match.teamB && !match.result) {
+        return { roundIdx: r, matchIdx: m };
+      }
+    }
+  }
+  return null;
+}
+
+/** Simulates the single next undecided series across the bracket (in round order). */
+export function simulateNextSeries(state: BracketState): BracketState {
+  const next = cloneBracket(state);
+  const loc = findNextPlayable(next);
+  if (!loc) return next;
+  const match = next.rounds[loc.roundIdx][loc.matchIdx];
+  const result = simulateSeries(match.teamA!, match.teamB!, loc.roundIdx + 1);
+  match.result = result;
+  match.winner = result.winner;
+  advanceWinner(next, loc.roundIdx, loc.matchIdx, result.winner);
+  return next;
+}
+
+/** Simulates every remaining series within a single round. */
+export function simulateRound(state: BracketState, roundIdx: number): BracketState {
+  const next = cloneBracket(state);
+  for (;;) {
+    const match = next.rounds[roundIdx]?.find((m) => m.teamA && m.teamB && !m.result);
+    if (!match) break;
+    const idx = next.rounds[roundIdx].indexOf(match);
+    const result = simulateSeries(match.teamA!, match.teamB!, roundIdx + 1);
+    match.result = result;
+    match.winner = result.winner;
+    advanceWinner(next, roundIdx, idx, result.winner);
+  }
+  return next;
+}
+
+/** Simulates every remaining series in the bracket through to a champion. */
+export function simulateAllRemaining(state: BracketState): BracketState {
+  let current = cloneBracket(state);
+  while (!current.champion) {
+    const loc = findNextPlayable(current);
+    if (!loc) break;
+    current = simulateNextSeries(current);
+  }
+  return current;
 }

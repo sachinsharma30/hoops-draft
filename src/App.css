@@ -72,9 +72,10 @@
 /* Draft board */
 .draft-layout {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: 1fr 300px;
   gap: 20px;
   align-items: start;
+  margin-bottom: 20px;
 }
 
 .draft-header {
@@ -142,6 +143,20 @@
   font-size: 0.85em;
 }
 
+.player-table th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.player-table th.sortable-th:hover {
+  color: var(--text);
+}
+
+.sort-arrow {
+  color: var(--accent);
+}
+
 .player-table td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
@@ -163,9 +178,56 @@
   color: white;
 }
 
-.roster-card {
+.draft-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.draft-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   position: sticky;
   top: 20px;
+}
+
+.roster-card {
+  margin-bottom: 0;
+}
+
+.history-card {
+  margin-bottom: 0;
+}
+
+.history-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-row {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82em;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--court);
+}
+
+.history-pick-num {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.78em;
+}
+
+.history-player {
+  font-weight: 600;
+}
+
+.history-team {
+  font-size: 0.85em;
 }
 
 .roster-list {
@@ -207,6 +269,25 @@
 
 .team-card.user-team {
   border-color: var(--accent);
+}
+
+.team-card.on-clock {
+  border-color: var(--win);
+  box-shadow: 0 0 0 1px var(--win);
+}
+
+.team-card.compact {
+  padding: 12px;
+}
+
+.on-clock-pill {
+  background: var(--win);
+  color: white;
+  font-size: 0.7em;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .team-card-header {
@@ -257,53 +338,110 @@
   text-align: center;
 }
 
-.bracket-rounds {
-  display: flex;
-  gap: 20px;
+.bracket-scroll {
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding: 36px 20px 20px 0;
 }
 
-.bracket-round {
-  min-width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.bracket-canvas {
+  position: relative;
 }
 
-.bracket-round h3 {
-  font-size: 0.9em;
-  color: var(--text-dim);
+.bracket-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.bracket-line {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2;
+}
+
+.bracket-round-label {
+  position: absolute;
+  top: -28px;
+  font-size: 0.78em;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 0;
+  color: var(--text-dim);
+  text-align: center;
 }
 
-.series-card {
+.bracket-match {
+  position: absolute;
   background: var(--court);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: default;
 }
 
-.series-card.user-series {
+.bracket-match.resolved {
+  cursor: pointer;
+}
+
+.bracket-match.selected {
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
-.series-team {
+.bracket-slot {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 3px 0;
-  font-size: 0.9em;
+  height: 50%;
+  padding: 0 10px;
+  font-size: 0.82em;
 }
 
-.series-team.winner {
+.bracket-slot:first-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.bracket-slot.winner {
   font-weight: 700;
   color: var(--win);
 }
 
-.series-wins {
+.bracket-team-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-wins {
   font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+
+.bracket-slot.winner .bracket-wins {
+  color: var(--win);
+}
+
+.bracket-ready-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.series-detail {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.series-detail h3 {
+  margin: 0 0 8px;
+  font-size: 1em;
 }
 
 .game-scores {
@@ -325,7 +463,7 @@
   .draft-layout {
     grid-template-columns: 1fr;
   }
-  .roster-card {
+  .draft-sidebar {
     position: static;
   }
 }
