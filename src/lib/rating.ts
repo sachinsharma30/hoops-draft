@@ -1,17 +1,36 @@
 import type { FantasyTeam, Player, Position } from './types';
 
+// 2025-26 NBA league-average shooting splits, used as the baseline for
+// efficiency value below. Sourced from the same per-game stats table as
+// the player pool.
+const LEAGUE_AVG_FG2_PCT = 0.55;
+const LEAGUE_AVG_FG3_PCT = 0.36;
+const LEAGUE_AVG_FT_PCT = 0.783;
+
+// A player needs to have appeared in roughly this many games before their
+// rate stats are trusted at full weight. Below that, the rating regresses
+// toward a replacement-level baseline so a hot 5-game stretch (or a
+// 0-for-0 shooting split that scores as "100%") can't outrank a full
+// season of production.
+const RELIABLE_GAMES = 25;
+const REPLACEMENT_LEVEL = 20;
+
 /**
  * Single-number value score for a player, used for draft-board ranking
  * and as the raw talent input to team rating. Weights approximate
  * standard categories-league value (scoring, playmaking, D, efficiency).
  */
 export function playerRating(p: Player): number {
+  // Points scored above/below what a league-average shooter would produce
+  // on the same shot volume — weighting by attempts means a small number
+  // of makes (or a 0-attempt "100%" split) can't swing the score the way
+  // a raw percentage bonus would.
   const efficiency =
-    (p.fgPct - 0.45) * 100 * 0.6 +
-    (p.fg3Pct - 0.35) * 100 * 0.35 +
-    (p.ftPct - 0.75) * 100 * 0.2;
+    (p.fg2Pct - LEAGUE_AVG_FG2_PCT) * p.fg2aPg * 2 +
+    (p.fg3Pct - LEAGUE_AVG_FG3_PCT) * p.fg3aPg * 3 +
+    (p.ftPct - LEAGUE_AVG_FT_PCT) * p.ftaPg;
 
-  return (
+  const raw =
     p.ppg * 1.0 +
     p.rpg * 1.15 +
     p.apg * 1.5 +
@@ -19,8 +38,10 @@ export function playerRating(p: Player): number {
     p.bpg * 3.0 -
     p.topg * 1.0 +
     p.mpg * 0.4 +
-    efficiency
-  );
+    efficiency;
+
+  const reliability = Math.min(1, p.gp / RELIABLE_GAMES);
+  return raw * reliability + REPLACEMENT_LEVEL * (1 - reliability);
 }
 
 const POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];

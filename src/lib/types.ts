@@ -10,8 +10,13 @@ export interface Player {
   gs: number;
   mpg: number;
   fgPct: number;
+  fgaPg: number;
+  fg2Pct: number;
+  fg2aPg: number;
   fg3Pct: number;
+  fg3aPg: number;
   ftPct: number;
+  ftaPg: number;
   rpg: number;
   apg: number;
   spg: number;
